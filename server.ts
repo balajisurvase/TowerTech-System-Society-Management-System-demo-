@@ -21,9 +21,7 @@ db.exec(`
     role TEXT, -- 'admin', 'resident', 'security'
     flat_id TEXT,
     name TEXT,
-    email TEXT UNIQUE,
-    mobile_number TEXT,
-    society_name TEXT
+    email TEXT
   );
 
   CREATE TABLE IF NOT EXISTS towers (
@@ -182,11 +180,11 @@ const seedData = async () => {
     const secPass = await bcrypt.hash("sec123", salt);
     const resPass = await bcrypt.hash("res123", salt);
 
-    const insertUser = db.prepare("INSERT INTO users (username, password, role, flat_id, name, email, mobile_number, society_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    insertUser.run("admin", adminPass, "admin", null, "System Admin", "admin@towertech.com", "9876543210", "Green Valley Residency");
-    insertUser.run("security", secPass, "security", null, "Gate Security", "security@towertech.com", "9876543211", "Green Valley Residency");
-    insertUser.run("resident", resPass, "resident", "A-101", "Rahul Sharma", "rahul@example.com", "9876543212", "Green Valley Residency");
-    insertUser.run("res-b101", resPass, "resident", "B-101", "Rohan Kulkarni", "rohan@example.com", "9876543213", "Green Valley Residency");
+    const insertUser = db.prepare("INSERT INTO users (username, password, role, flat_id, name, email) VALUES (?, ?, ?, ?, ?, ?)");
+    insertUser.run("admin", adminPass, "admin", null, "System Admin", "admin@towertech.com");
+    insertUser.run("security", secPass, "security", null, "Gate Security", "security@towertech.com");
+    insertUser.run("resident", resPass, "resident", "A-101", "Rahul Sharma", "rahul@example.com");
+    insertUser.run("res-b101", resPass, "resident", "B-101", "Rohan Kulkarni", "rohan@example.com");
 
     // Generate initial bills based on status
     const insertBill = db.prepare("INSERT INTO bills (flat_id, amount, month, due_date, status) VALUES (?, ?, ?, ?, ?)");
@@ -233,53 +231,32 @@ async function startServer() {
 
   // Auth Routes
   app.post("/api/register", async (req, res) => {
-    const { username, password, name, email, role, flatId, mobileNumber, societyName } = req.body;
+    const { username, password, name, email, role, flatId } = req.body;
     try {
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
-      const result = db.prepare("INSERT INTO users (username, password, name, email, role, flat_id, mobile_number, society_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-        .run(username || email, hashedPassword, name, email, role || 'resident', flatId || null, mobileNumber || null, societyName || 'Green Valley Residency');
+      const result = db.prepare("INSERT INTO users (username, password, name, email, role, flat_id) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(username, hashedPassword, name, email, role || 'resident', flatId || null);
       
       logActivity(Number(result.lastInsertRowid), "REGISTER", "New user registered");
       res.json({ success: true, message: "Registration successful" });
     } catch (err: any) {
       if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-        res.status(400).json({ success: false, message: "Username or Email already exists" });
+        res.status(400).json({ success: false, message: "Username already exists" });
       } else {
-        console.error(err);
         res.status(500).json({ success: false, message: "Registration failed" });
       }
     }
   });
 
-  app.post("/api/forgot-password", async (req, res) => {
-    const { email, societyName, newPassword } = req.body;
-    try {
-      const user = db.prepare("SELECT * FROM users WHERE email = ? AND society_name = ?").get(email, societyName) as any;
-      if (!user) {
-        return res.status(404).json({ success: false, message: "User not found in this society" });
-      }
-
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(newPassword, salt);
-      db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashedPassword, user.id);
-      
-      logActivity(user.id, "FORGOT_PASSWORD", "Password reset successful");
-      res.json({ success: true, message: "Password reset successful" });
-    } catch (err: any) {
-      res.status(500).json({ success: false, message: "Password reset failed" });
-    }
-  });
-
   app.post("/api/login", async (req, res) => {
-    const { username, password, societyName } = req.body;
-    // We allow login via username or email
-    const user = db.prepare("SELECT * FROM users WHERE (username = ? OR email = ?) AND society_name = ?").get(username, username, societyName) as any;
+    const { username, password } = req.body;
+    const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username) as any;
     
     if (user && await bcrypt.compare(password, user.password)) {
       const token = jwt.sign({ id: user.id, username: user.username, role: user.role, flat_id: user.flat_id }, JWT_SECRET, { expiresIn: '24h' });
       logActivity(user.id, "LOGIN", "User logged into the system");
-      res.json({ success: true, token, user: { id: user.id, username: user.username, role: user.role, name: user.name, flat_id: user.flat_id, society_name: user.society_name } });
+      res.json({ success: true, token, user: { id: user.id, username: user.username, role: user.role, name: user.name, flat_id: user.flat_id } });
     } else {
       res.status(401).json({ success: false, message: "Invalid credentials" });
     }
