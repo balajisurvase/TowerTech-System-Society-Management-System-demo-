@@ -1,0 +1,60 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tower {
+  id    String @id @default(uuid())
+  name  String
+  wings Wing[]
+}
+
+model Wing {
+  id      String @id @default(uuid())
+  name    String
+  towerId String
+  tower   Tower  @relation(fields: [towerId], references: [id])
+  flats   Flat[]
+}
+
+model Flat {
+  id       String    @id @default(uuid())
+  number   String
+  floor    Int
+  wingId   String
+  wing     Wing      @relation(fields: [wingId], references: [id])
+  resident Resident?
+}
+
+model Resident {
+  id               String            @id @default(uuid())
+  name             String
+  email            String            @unique
+  phone            String
+  flatId           String            @unique
+  flat             Flat              @relation(fields: [flatId], references: [id])
+  complaints       Complaint[]
+  maintenanceBills MaintenanceBill[]
+}
+
+model Complaint {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  status      String   @default("PENDING")
+  residentId  String
+  resident    Resident @relation(fields: [residentId], references: [id])
+}
+
+model MaintenanceBill {
+  id         String   @id @default(uuid())
+  amount     Float
+  month      String
+  status     String   @default("UNPAID")
+  residentId String
+  resident   Resident @relation(fields: [residentId], references: [id])
+}

@@ -25,7 +25,9 @@ import {
   Download,
   Search,
   Filter,
-  Activity
+  Activity,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -129,7 +131,7 @@ interface Event {
 // --- Components ---
 
 const Card = ({ children, className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden", className)} {...props}>
+  <div className={cn("bg-slate-900 rounded-xl shadow-sm border border-slate-800 overflow-hidden", className)} {...props}>
     {children}
   </div>
 );
@@ -148,10 +150,10 @@ const Button = ({
   disabled?: boolean;
 }) => {
   const variants = {
-    primary: "bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600",
-    secondary: "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600",
-    danger: "bg-rose-500 text-white hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-500",
-    ghost: "bg-transparent text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+    primary: "bg-red-600 text-white hover:bg-red-700",
+    secondary: "bg-slate-800 text-white hover:bg-slate-700 border border-slate-700",
+    danger: "bg-rose-600 text-white hover:bg-rose-700",
+    ghost: "bg-transparent text-slate-300 hover:bg-slate-800"
   };
 
   return (
@@ -171,11 +173,11 @@ const Button = ({
 
 const Badge = ({ children, variant = 'neutral' }: { children: React.ReactNode; variant?: 'success' | 'warning' | 'danger' | 'neutral' | 'info' }) => {
   const variants = {
-    success: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400",
-    warning: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-    danger: "bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400",
-    info: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-    neutral: "bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300"
+    success: "bg-emerald-900/30 text-emerald-400 border border-emerald-800/50",
+    warning: "bg-amber-900/30 text-amber-400 border border-amber-800/50",
+    danger: "bg-rose-900/30 text-rose-400 border border-rose-800/50",
+    info: "bg-red-900/30 text-red-400 border border-red-800/50",
+    neutral: "bg-slate-800 text-slate-300 border border-slate-700"
   };
 
   return (
@@ -195,6 +197,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('towertech_dark') === 'true');
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'forgot'>('login');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -204,6 +207,12 @@ export default function App() {
     }
     localStorage.setItem('towertech_dark', isDarkMode.toString());
   }, [isDarkMode]);
+
+  useEffect(() => {
+    if (user && user.role === 'security' && activeTab === 'dashboard') {
+      setActiveTab('visitors');
+    }
+  }, [user, activeTab]);
 
   const apiFetch = async (url: string, options: RequestInit = {}) => {
     const headers = {
@@ -238,7 +247,7 @@ export default function App() {
         setUser(data.user);
         setToken(data.token);
         localStorage.setItem('towertech_token', data.token);
-        setActiveTab('dashboard');
+        setActiveTab(data.user.role === 'security' ? 'visitors' : 'dashboard');
       } else {
         alert(data.message);
       }
@@ -281,282 +290,308 @@ export default function App() {
     localStorage.removeItem('towertech_token');
   };
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md"
-        >
-          <Card className="p-8">
-            <div className="flex flex-col items-center mb-8">
-              <div className="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-red-200">
-                <Building2 className="text-white w-8 h-8" />
-              </div>
-              <h1 className="text-2xl font-bold text-slate-900">TowerTech System</h1>
-              <p className="text-slate-500 text-sm">Society Management Platform</p>
+  const loginScreen = (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 text-white">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md"
+      >
+        <Card className="p-8 bg-slate-900 border-slate-800">
+          <div className="flex flex-col items-center mb-8">
+            <div className="w-16 h-16 bg-red-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-red-900/20">
+              <Building2 className="text-white w-8 h-8" />
             </div>
-
-            {authMode === 'login' && (
-              <>
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
-                    <input 
-                      name="username"
-                      type="text" 
-                      required
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all"
-                      placeholder="admin, resident, or security"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-sm font-medium text-slate-700">Password</label>
-                      <button 
-                        type="button"
-                        onClick={() => setAuthMode('forgot')}
-                        className="text-xs text-red-600 hover:underline"
-                      >
-                        Forgot Password?
-                      </button>
-                    </div>
-                    <input 
-                      name="password"
-                      type="password" 
-                      required
-                      className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all"
-                      placeholder="admin123, res123, or sec123"
-                    />
-                  </div>
-                  <Button disabled={loading} className="w-full py-3 mt-2">
-                    {loading ? "Logging in..." : "Sign In"}
-                  </Button>
-                </form>
-                <div className="mt-6 text-center">
-                  <p className="text-sm text-slate-500">
-                    Don't have an account?{" "}
-                    <button onClick={() => setAuthMode('register')} className="text-red-600 font-bold hover:underline">
-                      Create New Account
-                    </button>
-                  </p>
-                </div>
-              </>
-            )}
-
-            {authMode === 'register' && (
-              <>
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-                    <input name="name" required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="John Doe" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                    <input name="email" type="email" required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="john@example.com" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
-                    <input name="username" required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="johndoe" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
-                    <input name="password" type="password" required className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="••••••••" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Flat ID (Optional)</label>
-                    <input name="flatId" className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="e.g., A-101" />
-                  </div>
-                  <Button disabled={loading} className="w-full py-3 mt-2">
-                    {loading ? "Creating Account..." : "Register"}
-                  </Button>
-                </form>
-                <div className="mt-6 text-center">
-                  <button onClick={() => setAuthMode('login')} className="text-sm text-slate-500 hover:text-red-600">
-                    Already have an account? Sign In
-                  </button>
-                </div>
-              </>
-            )}
-
-            {authMode === 'forgot' && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-bold text-slate-900">Reset Password</h3>
-                <p className="text-sm text-slate-500">Enter your email address and we'll send you a simulation link to reset your password.</p>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
-                  <input type="email" className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="john@example.com" />
-                </div>
-                <Button onClick={() => { alert("Reset link sent (simulated)"); setAuthMode('login'); }} className="w-full py-3">
-                  Send Reset Link
-                </Button>
-                <div className="text-center">
-                  <button onClick={() => setAuthMode('login')} className="text-sm text-slate-500 hover:text-red-600">
-                    Back to Login
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-8 pt-6 border-t border-slate-100">
-              <p className="text-xs text-center text-slate-400 mb-4 uppercase tracking-wider font-semibold">Demo Credentials</p>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="text-center p-2 bg-slate-50 rounded-lg">
-                  <p className="text-[10px] font-bold text-slate-500">ADMIN</p>
-                  <p className="text-[10px] text-slate-400">admin / admin123</p>
-                </div>
-                <div className="text-center p-2 bg-slate-50 rounded-lg">
-                  <p className="text-[10px] font-bold text-slate-500">RESIDENT</p>
-                  <p className="text-[10px] text-slate-400">resident / res123</p>
-                </div>
-                <div className="text-center p-2 bg-slate-50 rounded-lg">
-                  <p className="text-[10px] font-bold text-slate-500">SECURITY</p>
-                  <p className="text-[10px] text-slate-400">security / sec123</p>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </motion.div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
-      <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transition-transform duration-300 lg:relative lg:translate-x-0",
-        !isSidebarOpen && "-translate-x-full lg:hidden"
-      )}>
-        <div className="h-full flex flex-col">
-          <div className="p-6 flex items-center gap-3">
-            <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
-              <Building2 className="text-white w-5 h-5" />
-            </div>
-            <span className="font-bold text-slate-900 truncate">TowerTech</span>
-            <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden ml-auto">
-              <X className="w-5 h-5 text-slate-400" />
-            </button>
+            <h1 className="text-2xl font-bold text-white">TowerTech System</h1>
+            <p className="text-slate-400 text-sm">Society Management Platform</p>
           </div>
 
-          <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+          {authMode === 'login' && (
+            <>
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Username</label>
+                  <input 
+                    name="username"
+                    type="text" 
+                    required
+                    className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all"
+                    placeholder="admin, resident, or security"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-slate-300">Password</label>
+                    <button 
+                      type="button"
+                      onClick={() => setAuthMode('forgot')}
+                      className="text-xs text-red-500 hover:underline"
+                    >
+                      Forgot Password?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input 
+                      name="password"
+                      type={showPassword ? "text" : "password"} 
+                      required
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all pr-10"
+                      placeholder="admin123, res123, or sec123"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+                <Button disabled={loading} className="w-full py-3 mt-2">
+                  {loading ? "Logging in..." : "Sign In"}
+                </Button>
+              </form>
+              <div className="mt-6 text-center">
+                <p className="text-sm text-slate-400">
+                  Don't have an account?{" "}
+                  <button onClick={() => setAuthMode('register')} className="text-red-500 font-bold hover:underline">
+                    Create New Account
+                  </button>
+                </p>
+              </div>
+            </>
+          )}
+
+          {authMode === 'register' && (
+            <>
+              <form onSubmit={handleRegister} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Full Name</label>
+                  <input name="name" required className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="John Doe" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Email</label>
+                  <input name="email" type="email" required className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="john@example.com" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Username</label>
+                  <input name="username" required className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="johndoe" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Password</label>
+                  <div className="relative">
+                    <input 
+                      name="password" 
+                      type={showPassword ? "text" : "password"} 
+                      required 
+                      className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-red-500 outline-none pr-10" 
+                      placeholder="••••••••" 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Flat ID (Optional)</label>
+                  <input name="flatId" className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="e.g., A-101" />
+                </div>
+                <Button disabled={loading} className="w-full py-3 mt-2">
+                  {loading ? "Creating Account..." : "Register"}
+                </Button>
+              </form>
+              <div className="mt-6 text-center">
+                <button onClick={() => setAuthMode('login')} className="text-sm text-slate-400 hover:text-red-500">
+                  Already have an account? Sign In
+                </button>
+              </div>
+            </>
+          )}
+
+          {authMode === 'forgot' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-white">Reset Password</h3>
+              <p className="text-sm text-slate-400">Enter your email address and we'll send you a simulation link to reset your password.</p>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Email Address</label>
+                <input type="email" className="w-full px-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg focus:ring-2 focus:ring-red-500 outline-none" placeholder="john@example.com" />
+              </div>
+              <Button onClick={() => { alert("Reset link sent (simulated)"); setAuthMode('login'); }} className="w-full py-3">
+                Send Reset Link
+              </Button>
+              <div className="text-center">
+                <button onClick={() => setAuthMode('login')} className="text-sm text-slate-400 hover:text-red-500">
+                  Back to Login
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-8 pt-6 border-t border-slate-800">
+            <p className="text-xs text-center text-slate-500 mb-4 uppercase tracking-wider font-semibold">Demo Credentials</p>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="text-center p-2 bg-slate-800/50 rounded-lg">
+                <p className="text-[10px] font-bold text-slate-400">ADMIN</p>
+                <p className="text-[10px] text-slate-500">admin / admin123</p>
+              </div>
+              <div className="text-center p-2 bg-slate-800/50 rounded-lg">
+                <p className="text-[10px] font-bold text-slate-400">RESIDENT</p>
+                <p className="text-[10px] text-slate-500">resident / res123</p>
+              </div>
+              <div className="text-center p-2 bg-slate-800/50 rounded-lg">
+                <p className="text-[10px] font-bold text-slate-400">SECURITY</p>
+                <p className="text-[10px] text-slate-500">security / sec123</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </motion.div>
+    </div>
+  );
+
+  if (!user) return loginScreen;
+
+  return (
+    <div className="min-h-screen bg-slate-950 flex text-white">
+    {/* Sidebar */}
+    <aside className={cn(
+      "fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transition-transform duration-300 lg:relative lg:translate-x-0",
+      !isSidebarOpen && "-translate-x-full lg:hidden"
+    )}>
+      <div className="h-full flex flex-col">
+        <div className="p-6 flex items-center gap-3">
+          <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+            <Building2 className="text-white w-5 h-5" />
+          </div>
+          <span className="font-bold text-white truncate">TowerTech</span>
+          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden ml-auto">
+            <X className="w-5 h-5 text-slate-500" />
+          </button>
+        </div>
+
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+          {user.role !== 'security' && (
             <SidebarItem 
               icon={<LayoutDashboard size={20} />} 
               label="Dashboard" 
               active={activeTab === 'dashboard'} 
               onClick={() => setActiveTab('dashboard')} 
             />
-            
-            {user.role === 'admin' && (
-              <>
-                <SidebarItem icon={<Users size={20} />} label="Towers & Flats" active={activeTab === 'flats'} onClick={() => setActiveTab('flats')} />
-                <SidebarItem icon={<CreditCard size={20} />} label="Maintenance" active={activeTab === 'maintenance'} onClick={() => setActiveTab('maintenance')} />
-                <SidebarItem icon={<AlertTriangle size={20} />} label="Emergency Alerts" active={activeTab === 'alerts'} onClick={() => setActiveTab('alerts')} />
-                <SidebarItem icon={<Calendar size={20} />} label="Society Events" active={activeTab === 'events'} onClick={() => setActiveTab('events')} />
-                <SidebarItem icon={<TrendingUp size={20} />} label="Financial Reports" active={activeTab === 'reports'} onClick={() => setActiveTab('reports')} />
-                <SidebarItem icon={<Activity size={20} />} label="Activity Logs" active={activeTab === 'logs'} onClick={() => setActiveTab('logs')} />
-              </>
-            )}
+          )}
+          
+          {user.role === 'admin' && (
+            <>
+              <SidebarItem icon={<Users size={20} />} label="Towers & Flats" active={activeTab === 'flats'} onClick={() => setActiveTab('flats')} />
+              <SidebarItem icon={<CreditCard size={20} />} label="Maintenance" active={activeTab === 'maintenance'} onClick={() => setActiveTab('maintenance')} />
+              <SidebarItem icon={<AlertTriangle size={20} />} label="Emergency Alerts" active={activeTab === 'alerts'} onClick={() => setActiveTab('alerts')} />
+              <SidebarItem icon={<Calendar size={20} />} label="Society Events" active={activeTab === 'events'} onClick={() => setActiveTab('events')} />
+              <SidebarItem icon={<TrendingUp size={20} />} label="Financial Reports" active={activeTab === 'reports'} onClick={() => setActiveTab('reports')} />
+              <SidebarItem icon={<Activity size={20} />} label="Activity Logs" active={activeTab === 'logs'} onClick={() => setActiveTab('logs')} />
+            </>
+          )}
 
-            {user.role === 'resident' && (
-              <>
-                <SidebarItem icon={<CreditCard size={20} />} label="My Bills" active={activeTab === 'bills'} onClick={() => setActiveTab('bills')} />
-                <SidebarItem icon={<MessageSquare size={20} />} label="Complaints" active={activeTab === 'complaints'} onClick={() => setActiveTab('complaints')} />
-                <SidebarItem icon={<Calendar size={20} />} label="Amenity Booking" active={activeTab === 'bookings'} onClick={() => setActiveTab('bookings')} />
-                <SidebarItem icon={<Shield size={20} />} label="Visitor History" active={activeTab === 'visitors'} onClick={() => setActiveTab('visitors')} />
-              </>
-            )}
+          {user.role === 'resident' && (
+            <>
+              <SidebarItem icon={<CreditCard size={20} />} label="My Bills" active={activeTab === 'bills'} onClick={() => setActiveTab('bills')} />
+              <SidebarItem icon={<MessageSquare size={20} />} label="Complaints" active={activeTab === 'complaints'} onClick={() => setActiveTab('complaints')} />
+              <SidebarItem icon={<Calendar size={20} />} label="Amenity Booking" active={activeTab === 'bookings'} onClick={() => setActiveTab('bookings')} />
+              <SidebarItem icon={<Shield size={20} />} label="Visitor History" active={activeTab === 'visitors'} onClick={() => setActiveTab('visitors')} />
+            </>
+          )}
 
-            {user.role === 'security' && (
-              <>
-                <SidebarItem icon={<Shield size={20} />} label="Visitor Log" active={activeTab === 'visitors'} onClick={() => setActiveTab('visitors')} />
-                <SidebarItem icon={<UserPlus size={20} />} label="New Entry" active={activeTab === 'new-entry'} onClick={() => setActiveTab('new-entry')} />
-              </>
-            )}
-          </nav>
+          {user.role === 'security' && (
+            <>
+              <SidebarItem icon={<Shield size={20} />} label="Visitor Log" active={activeTab === 'visitors'} onClick={() => setActiveTab('visitors')} />
+              <SidebarItem icon={<UserPlus size={20} />} label="New Entry" active={activeTab === 'new-entry'} onClick={() => setActiveTab('new-entry')} />
+            </>
+          )}
+        </nav>
 
-          <div className="p-4 border-t border-slate-100">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 font-bold">
-                {user.name.charAt(0)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-900 truncate">{user.name}</p>
-                <p className="text-xs text-slate-500 capitalize">{user.role}</p>
-              </div>
+        <div className="p-4 border-t border-slate-800">
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 mb-4">
+            <div className="w-10 h-10 rounded-full bg-red-900/30 flex items-center justify-center text-red-500 font-bold">
+              {user.name.charAt(0)}
             </div>
-            <button 
-              onClick={handleLogout}
-              className="flex items-center gap-3 w-full p-3 text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
-            >
-              <LogOut size={20} />
-              <span className="font-medium">Logout</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-white truncate">{user.name}</p>
+              <p className="text-xs text-slate-400 capitalize">{user.role}</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full p-3 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors"
+          >
+            <LogOut size={20} />
+            <span className="font-medium">Logout</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    {/* Main Content */}
+    <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 sticky top-0 z-40">
+        <div className="flex items-center gap-4">
+          <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 hover:bg-slate-800 rounded-lg">
+            <Menu size={20} className="text-slate-400" />
+          </button>
+          <h2 className="text-lg font-bold text-white capitalize">
+            {activeTab.replace('-', ' ')}
+          </h2>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <button className="p-2 hover:bg-slate-800 rounded-lg text-slate-400">
+              <AlertTriangle size={20} />
             </button>
+            <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-slate-900">
+              2
+            </span>
+          </div>
+          <button 
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            className="p-2 hover:bg-slate-800 rounded-lg text-slate-400"
+          >
+            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+          <div className="hidden sm:flex flex-col items-end">
+            <p className="text-sm font-medium text-white">{format(new Date(), 'EEEE, do MMMM')}</p>
+            <p className="text-xs text-slate-500">TowerTech Society</p>
           </div>
         </div>
-      </aside>
+      </header>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 sticky top-0 z-40">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
-              <Menu size={20} className="text-slate-600 dark:text-slate-400" />
-            </button>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white capitalize">
-              {activeTab.replace('-', ' ')}
-            </h2>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400">
-                <AlertTriangle size={20} />
-              </button>
-              <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-white dark:border-slate-900">
-                2
-              </span>
-            </div>
-            <button 
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-400"
-            >
-              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-            <div className="hidden sm:flex flex-col items-end">
-              <p className="text-sm font-medium text-slate-900 dark:text-white">{format(new Date(), 'EEEE, do MMMM')}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">TowerTech Society</p>
-            </div>
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-6">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              {activeTab === 'dashboard' && <DashboardView user={user} apiFetch={apiFetch} />}
-              {activeTab === 'flats' && <AdminFlatsView apiFetch={apiFetch} />}
-              {activeTab === 'maintenance' && <AdminMaintenanceView apiFetch={apiFetch} />}
-              {activeTab === 'alerts' && <AdminAlertsView apiFetch={apiFetch} />}
-              {activeTab === 'events' && <AdminEventsView apiFetch={apiFetch} />}
-              {activeTab === 'reports' && <AdminReportsView apiFetch={apiFetch} />}
-              {activeTab === 'logs' && <AdminLogsView apiFetch={apiFetch} />}
-              {activeTab === 'bills' && <ResidentBillsView user={user} apiFetch={apiFetch} />}
-              {activeTab === 'complaints' && <ResidentComplaintsView user={user} apiFetch={apiFetch} />}
-              {activeTab === 'bookings' && <ResidentBookingsView user={user} apiFetch={apiFetch} />}
-              {activeTab === 'visitors' && (user.role === 'security' ? <SecurityVisitorsView apiFetch={apiFetch} /> : <ResidentVisitorsView user={user} apiFetch={apiFetch} />)}
-              {activeTab === 'new-entry' && <SecurityNewEntryView apiFetch={apiFetch} />}
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </main>
-    </div>
-  );
+      <div className="flex-1 overflow-y-auto p-6">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {activeTab === 'dashboard' && user.role !== 'security' && <DashboardView user={user} apiFetch={apiFetch} />}
+            {activeTab === 'flats' && <AdminFlatsView apiFetch={apiFetch} />}
+            {activeTab === 'maintenance' && <AdminMaintenanceView apiFetch={apiFetch} />}
+            {activeTab === 'alerts' && <AdminAlertsView apiFetch={apiFetch} />}
+            {activeTab === 'events' && <AdminEventsView apiFetch={apiFetch} />}
+            {activeTab === 'reports' && <AdminReportsView apiFetch={apiFetch} />}
+            {activeTab === 'logs' && <AdminLogsView apiFetch={apiFetch} />}
+            {activeTab === 'bills' && <ResidentBillsView user={user} apiFetch={apiFetch} />}
+            {activeTab === 'complaints' && <ResidentComplaintsView user={user} apiFetch={apiFetch} />}
+            {activeTab === 'bookings' && <ResidentBookingsView user={user} apiFetch={apiFetch} />}
+            {activeTab === 'visitors' && (user.role === 'security' ? <SecurityVisitorsView apiFetch={apiFetch} /> : <ResidentVisitorsView user={user} apiFetch={apiFetch} />)}
+            {activeTab === 'new-entry' && <SecurityNewEntryView apiFetch={apiFetch} />}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </main>
+  </div>
+);
 }
 
 function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
@@ -566,8 +601,8 @@ function SidebarItem({ icon, label, active, onClick }: { icon: React.ReactNode, 
       className={cn(
         "flex items-center gap-3 w-full p-3 rounded-xl transition-all",
         active 
-          ? "bg-red-50 text-red-600" 
-          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+          ? "bg-red-600/10 text-red-500" 
+          : "text-slate-400 hover:bg-slate-800 hover:text-white"
       )}
     >
       {icon}
@@ -626,27 +661,27 @@ function DashboardView({ user, apiFetch }: { user: User, apiFetch: any }) {
             <h3 className="text-lg font-bold mb-6">AI Budget Prediction</h3>
             {prediction ? (
               <div className="space-y-4">
-                <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-800">
+                <div className="p-4 bg-red-900/20 rounded-xl border border-red-800">
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-                      <TrendingUp className="text-red-600 w-5 h-5" />
+                    <div className="p-2 bg-slate-800 rounded-lg shadow-sm">
+                      <TrendingUp className="text-red-500 w-5 h-5" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-red-900 dark:text-red-100">Projected Expense Growth</p>
-                      <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                      <p className="text-sm font-bold text-red-100">Projected Expense Growth</p>
+                      <p className="text-xs text-red-300 mt-1">
                         Recent: ₹{prediction.recentExpense?.toLocaleString()} vs Previous: ₹{prediction.previousExpense?.toLocaleString()}
                       </p>
-                      <p className="text-xs font-bold text-red-800 dark:text-red-200 mt-1">Growth: {prediction.growth}%</p>
+                      <p className="text-xs font-bold text-red-200 mt-1">Growth: {prediction.growth}%</p>
                     </div>
                   </div>
                 </div>
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
-                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Recommendation</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white mt-1">{prediction.suggestion}</p>
+                <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700">
+                  <p className="text-sm font-medium text-slate-400">Recommendation</p>
+                  <p className="text-lg font-bold text-white mt-1">{prediction.suggestion}</p>
                 </div>
                 <div className="flex items-center justify-between pt-4">
-                  <span className="text-sm text-slate-500">Confidence Level</span>
-                  <span className="text-sm font-bold text-emerald-600">{prediction.confidence?.toFixed(1)}%</span>
+                  <span className="text-sm text-slate-400">Confidence Level</span>
+                  <span className="text-sm font-bold text-emerald-400">{prediction.confidence?.toFixed(1)}%</span>
                 </div>
                 <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
                   <div className="bg-emerald-500 h-full transition-all duration-1000" style={{ width: `${prediction.confidence}%` }} />
@@ -681,13 +716,13 @@ function DashboardView({ user, apiFetch }: { user: User, apiFetch: any }) {
         <Building2 className="absolute -right-8 -bottom-8 w-64 h-64 opacity-10 rotate-12" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-red-100 text-red-600 rounded-lg">
+            <div className="p-2 bg-red-900/30 text-red-500 rounded-lg">
               <Calendar size={20} />
             </div>
-            <h3 className="font-bold">Upcoming Events</h3>
+            <h3 className="font-bold text-white">Upcoming Events</h3>
           </div>
           <div className="space-y-4">
             <EventItem title="Annual General Meeting" date="March 15, 2026" />
@@ -697,25 +732,14 @@ function DashboardView({ user, apiFetch }: { user: User, apiFetch: any }) {
 
         <Card className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-amber-100 text-amber-600 rounded-lg">
+            <div className="p-2 bg-amber-900/30 text-amber-500 rounded-lg">
               <AlertTriangle size={20} />
             </div>
-            <h3 className="font-bold">Recent Alerts</h3>
+            <h3 className="font-bold text-white">Recent Alerts</h3>
           </div>
           <div className="space-y-4">
-            <p className="text-sm text-slate-500 italic">No active alerts for your tower.</p>
+            <p className="text-sm text-slate-400 italic">No active alerts for your tower.</p>
           </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
-              <Shield size={20} />
-            </div>
-            <h3 className="font-bold">Security Status</h3>
-          </div>
-          <p className="text-sm text-slate-600">Gate security is active. Last visitor recorded 15 mins ago.</p>
-          <Button variant="secondary" className="w-full mt-4 text-xs">View Security Log</Button>
         </Card>
       </div>
     </div>
@@ -726,12 +750,12 @@ function StatCard({ icon, label, value, color }: { icon: React.ReactNode, label:
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between">
-        <div className={cn("p-3 rounded-xl", `bg-${color}-50`)}>
+        <div className={cn("p-3 rounded-xl", `bg-${color}-900/20`)}>
           {icon}
         </div>
         <div className="text-right">
-          <p className="text-sm text-slate-500 font-medium">{label}</p>
-          <p className="text-2xl font-bold text-slate-900">{value}</p>
+          <p className="text-sm text-slate-300 font-medium">{label}</p>
+          <p className="text-2xl font-bold text-white">{value}</p>
         </div>
       </div>
     </Card>
@@ -743,8 +767,8 @@ function EventItem({ title, date }: { title: string, date: string }) {
     <div className="flex items-center gap-3">
       <div className="w-2 h-2 rounded-full bg-red-500" />
       <div>
-        <p className="text-sm font-bold text-slate-900">{title}</p>
-        <p className="text-xs text-slate-500">{date}</p>
+        <p className="text-sm font-bold text-white">{title}</p>
+        <p className="text-xs text-slate-400">{date}</p>
       </div>
     </div>
   );
@@ -777,7 +801,7 @@ function AdminFlatsView({ apiFetch }: { apiFetch: any }) {
               onClick={() => setFilter(t)}
               className={cn(
                 "px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
-                filter === t ? "bg-red-600 text-white" : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
+                filter === t ? "bg-red-600 text-white" : "bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700"
               )}
             >
               Tower {t}
@@ -791,23 +815,23 @@ function AdminFlatsView({ apiFetch }: { apiFetch: any }) {
             placeholder="Search flat or owner..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-red-500"
+            className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {filteredFlats.map(flat => (
-          <Card key={flat.id} className="p-4 hover:border-red-200 dark:hover:border-red-800 transition-colors dark:bg-slate-800 dark:border-slate-700">
+          <Card key={flat.id} className="p-4 hover:border-red-800 transition-colors bg-slate-800 border-slate-700">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-lg font-bold text-slate-900 dark:text-white">{flat.id}</span>
+              <span className="text-lg font-bold text-white">{flat.id}</span>
               <Badge variant={flat.maintenance_status === 'Paid' ? 'success' : 'danger'}>
                 {flat.maintenance_status}
               </Badge>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">{flat.owner_name}</p>
+            <p className="text-xs text-slate-400 mb-4">{flat.owner_name}</p>
             <div className="flex gap-2">
-              <Button variant="secondary" className="text-[10px] px-2 py-1 flex-1 dark:bg-slate-700 dark:text-slate-300">Details</Button>
+              <Button variant="secondary" className="text-[10px] px-2 py-1 flex-1 bg-slate-700 text-slate-200">Details</Button>
             </div>
           </Card>
         ))}
@@ -851,26 +875,26 @@ function AdminMaintenanceView({ apiFetch }: { apiFetch: any }) {
 
   return (
     <div className="space-y-6">
-      <Card className="p-8 max-w-2xl mx-auto dark:bg-slate-800 dark:border-slate-700">
-        <h3 className="text-xl font-bold mb-6 dark:text-white">Generate Monthly Bills</h3>
+      <Card className="p-8 max-w-2xl mx-auto bg-slate-800 border-slate-700">
+        <h3 className="text-xl font-bold mb-6 text-white">Generate Monthly Bills</h3>
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Billing Month</label>
-              <input type="text" readOnly value={format(new Date(), 'MMMM yyyy')} className="w-full px-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg outline-none dark:text-white" />
+              <label className="block text-sm font-medium text-slate-300 mb-1">Billing Month</label>
+              <input type="text" readOnly value={format(new Date(), 'MMMM yyyy')} className="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg outline-none text-white" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Amount (₹)</label>
-              <input type="number" defaultValue={1500} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white" />
+              <label className="block text-sm font-medium text-slate-300 mb-1">Amount (₹)</label>
+              <input type="number" defaultValue={1500} className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-900 text-white" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Due Date</label>
-            <input type="date" defaultValue={format(new Date(new Date().getFullYear(), new Date().getMonth(), 10), 'yyyy-MM-dd')} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white" />
+            <label className="block text-sm font-medium text-slate-300 mb-1">Due Date</label>
+            <input type="date" defaultValue={format(new Date(new Date().getFullYear(), new Date().getMonth(), 10), 'yyyy-MM-dd')} className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-900 text-white" />
           </div>
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-800 flex gap-3">
-            <Info className="text-red-600 dark:text-red-400 shrink-0" size={20} />
-            <p className="text-xs text-red-700 dark:text-red-300">Generating bills will create a new maintenance record for all 112 flats. Residents will receive an automated simulation email.</p>
+          <div className="p-4 bg-red-900/20 rounded-xl border border-red-800 flex gap-3">
+            <Info className="text-red-400 shrink-0" size={20} />
+            <p className="text-xs text-red-300">Generating bills will create a new maintenance record for all 112 flats. Residents will receive an automated simulation email.</p>
           </div>
           <Button onClick={generateBills} disabled={loading} className="w-full py-3">
             {loading ? "Generating..." : "Generate Bills for All Flats"}
@@ -911,13 +935,13 @@ function AdminAlertsView({ apiFetch }: { apiFetch: any }) {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <Card className="p-8 dark:bg-slate-800 dark:border-slate-700">
-        <h3 className="text-xl font-bold mb-6 dark:text-white">Create Emergency Alert</h3>
+      <Card className="p-8">
+        <h3 className="text-xl font-bold mb-6 text-white">Create Emergency Alert</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Target Tower</label>
-              <select name="tower" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white">
+              <label className="block text-sm font-medium text-slate-300 mb-1">Target Tower</label>
+              <select name="tower" className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-800 text-white">
                 <option value="All">All Towers</option>
                 <option value="A">Tower A</option>
                 <option value="B">Tower B</option>
@@ -926,8 +950,8 @@ function AdminAlertsView({ apiFetch }: { apiFetch: any }) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Severity</label>
-              <select name="severity" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white">
+              <label className="block text-sm font-medium text-slate-300 mb-1">Severity</label>
+              <select name="severity" className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-800 text-white">
                 <option value="Low">Low</option>
                 <option value="Medium">Medium</option>
                 <option value="High">High</option>
@@ -935,12 +959,12 @@ function AdminAlertsView({ apiFetch }: { apiFetch: any }) {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Alert Title</label>
-            <input name="title" required type="text" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white" placeholder="e.g., Water Supply Interruption" />
+            <label className="block text-sm font-medium text-slate-300 mb-1">Alert Title</label>
+            <input name="title" required type="text" className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-800 text-white" placeholder="e.g., Water Supply Interruption" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Message</label>
-            <textarea name="message" required rows={4} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white" placeholder="Detailed message for residents..." />
+            <label className="block text-sm font-medium text-slate-300 mb-1">Message</label>
+            <textarea name="message" required rows={4} className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-800 text-white" placeholder="Detailed message for residents..." />
           </div>
           <Button disabled={loading} className="w-full py-3">
             {loading ? "Sending..." : "Broadcast Alert"}
@@ -987,20 +1011,20 @@ function AdminEventsView({ apiFetch }: { apiFetch: any }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <Card className="p-6 lg:col-span-1 h-fit dark:bg-slate-800 dark:border-slate-700">
-        <h3 className="text-lg font-bold mb-4 dark:text-white">Add New Event</h3>
+      <Card className="p-6 lg:col-span-1 h-fit">
+        <h3 className="text-lg font-bold mb-4 text-white">Add New Event</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Event Title</label>
-            <input name="title" required type="text" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white" />
+            <label className="block text-sm font-medium text-slate-300 mb-1">Event Title</label>
+            <input name="title" required type="text" className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-800 text-white" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date</label>
-            <input name="date" required type="date" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white" />
+            <label className="block text-sm font-medium text-slate-300 mb-1">Date</label>
+            <input name="date" required type="date" className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-800 text-white" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
-            <textarea name="description" required rows={3} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white" />
+            <label className="block text-sm font-medium text-slate-300 mb-1">Description</label>
+            <textarea name="description" required rows={3} className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-800 text-white" />
           </div>
           <Button disabled={loading} className="w-full">
             {loading ? "Creating..." : "Create Event"}
@@ -1009,16 +1033,16 @@ function AdminEventsView({ apiFetch }: { apiFetch: any }) {
       </Card>
 
       <div className="lg:col-span-2 space-y-4">
-        <h3 className="text-lg font-bold dark:text-white">Upcoming Events</h3>
+        <h3 className="text-lg font-bold text-white">Upcoming Events</h3>
         {events.map(event => (
-          <Card key={event.id} className="p-4 flex items-center gap-6 dark:bg-slate-800 dark:border-slate-700">
-            <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-xl flex flex-col items-center justify-center text-red-600 dark:text-red-400 shrink-0">
+          <Card key={event.id} className="p-4 flex items-center gap-6">
+            <div className="w-16 h-16 bg-red-900/20 rounded-xl flex flex-col items-center justify-center text-red-400 shrink-0">
               <span className="text-xs font-bold uppercase">{format(new Date(event.date), 'MMM')}</span>
               <span className="text-xl font-black">{format(new Date(event.date), 'dd')}</span>
             </div>
             <div className="flex-1">
-              <h4 className="font-bold text-slate-900 dark:text-white">{event.title}</h4>
-              <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-1">{event.description}</p>
+              <h4 className="font-bold text-white">{event.title}</h4>
+              <p className="text-sm text-slate-400 line-clamp-1">{event.description}</p>
             </div>
           </Card>
         ))}
@@ -1036,34 +1060,34 @@ function AdminLogsView({ apiFetch }: { apiFetch: any }) {
   }, []);
 
   return (
-    <Card className="p-6 dark:bg-slate-800 dark:border-slate-700">
-      <h3 className="text-lg font-bold mb-6 dark:text-white">System Activity Logs</h3>
+    <Card className="p-6">
+      <h3 className="text-lg font-bold mb-6 text-white">System Activity Logs</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
-            <tr className="border-b border-slate-100 dark:border-slate-700">
-              <th className="py-3 font-semibold text-slate-500 dark:text-slate-400 text-sm">Timestamp</th>
-              <th className="py-3 font-semibold text-slate-500 dark:text-slate-400 text-sm">User</th>
-              <th className="py-3 font-semibold text-slate-500 dark:text-slate-400 text-sm">Action</th>
-              <th className="py-3 font-semibold text-slate-500 dark:text-slate-400 text-sm">Details</th>
+            <tr className="border-b border-slate-800">
+              <th className="py-3 font-semibold text-slate-400 text-sm">Timestamp</th>
+              <th className="py-3 font-semibold text-slate-400 text-sm">User</th>
+              <th className="py-3 font-semibold text-slate-400 text-sm">Action</th>
+              <th className="py-3 font-semibold text-slate-400 text-sm">Details</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
+          <tbody className="divide-y divide-slate-800">
             {logs.map(log => (
               <tr key={log.id}>
-                <td className="py-4 text-xs text-slate-500 dark:text-slate-400">{format(new Date(log.timestamp), 'PPP p')}</td>
-                <td className="py-4 font-medium text-slate-900 dark:text-white">{log.user_name}</td>
+                <td className="py-4 text-xs text-slate-400">{format(new Date(log.timestamp), 'PPP p')}</td>
+                <td className="py-4 font-medium text-white">{log.user_name}</td>
                 <td className="py-4">
                   <Badge variant="info">{log.action}</Badge>
                 </td>
-                <td className="py-4 text-sm text-slate-600 dark:text-slate-300">{log.details}</td>
+                <td className="py-4 text-sm text-slate-200">{log.details}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <div className="mt-6 flex justify-center">
-        <Button variant="secondary" className="text-sm">Load More Logs</Button>
+        <Button variant="secondary" className="text-sm bg-slate-800 text-slate-200 hover:bg-slate-700">Load More Logs</Button>
       </div>
     </Card>
   );
@@ -1111,15 +1135,15 @@ function AdminReportsView({ apiFetch }: { apiFetch: any }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6 dark:bg-slate-800 dark:border-slate-700">
-          <h3 className="text-lg font-bold mb-6 dark:text-white">Income vs Expense</h3>
+        <Card className="p-6">
+          <h3 className="text-lg font-bold mb-6 text-white">Income vs Expense</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
                 <XAxis dataKey="name" stroke="#94a3b8" />
                 <YAxis stroke="#94a3b8" />
-                <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', color: '#fff' }} />
                 <Legend />
                 <Line type="monotone" dataKey="income" stroke="#ef4444" strokeWidth={3} dot={{ r: 6 }} />
                 <Line type="monotone" dataKey="expense" stroke="#94a3b8" strokeWidth={3} dot={{ r: 6 }} />
@@ -1128,8 +1152,8 @@ function AdminReportsView({ apiFetch }: { apiFetch: any }) {
           </div>
         </Card>
 
-        <Card className="p-6 dark:bg-slate-800 dark:border-slate-700">
-          <h3 className="text-lg font-bold mb-6 dark:text-white">Expense Distribution</h3>
+        <Card className="p-6">
+          <h3 className="text-lg font-bold mb-6 text-white">Expense Distribution</h3>
           <div className="h-80 flex flex-col items-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -1146,7 +1170,7 @@ function AdminReportsView({ apiFetch }: { apiFetch: any }) {
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', color: '#fff' }} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -1154,10 +1178,10 @@ function AdminReportsView({ apiFetch }: { apiFetch: any }) {
         </Card>
       </div>
 
-      <Card className="p-6 dark:bg-slate-800 dark:border-slate-700">
+      <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold dark:text-white">Financial Summary</h3>
-          <Button onClick={exportCSV} variant="secondary" className="flex items-center gap-2 text-xs dark:bg-slate-700 dark:text-slate-300">
+          <h3 className="text-lg font-bold text-white">Financial Summary</h3>
+          <Button onClick={exportCSV} variant="secondary" className="flex items-center gap-2 text-xs bg-slate-800 text-slate-300 hover:bg-slate-700">
             <Download size={14} />
             Export CSV
           </Button>
@@ -1165,15 +1189,15 @@ function AdminReportsView({ apiFetch }: { apiFetch: any }) {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b border-slate-100 dark:border-slate-700">
-                <th className="py-3 font-semibold text-slate-500 dark:text-slate-400 text-sm">Category</th>
-                <th className="py-3 font-semibold text-slate-500 dark:text-slate-400 text-sm">Budgeted</th>
-                <th className="py-3 font-semibold text-slate-500 dark:text-slate-400 text-sm">Actual</th>
-                <th className="py-3 font-semibold text-slate-500 dark:text-slate-400 text-sm">Variance</th>
-                <th className="py-3 font-semibold text-slate-500 dark:text-slate-400 text-sm text-right">Status</th>
+              <tr className="border-b border-slate-800">
+                <th className="py-3 font-semibold text-slate-400 text-sm">Category</th>
+                <th className="py-3 font-semibold text-slate-400 text-sm">Budgeted</th>
+                <th className="py-3 font-semibold text-slate-400 text-sm">Actual</th>
+                <th className="py-3 font-semibold text-slate-400 text-sm">Variance</th>
+                <th className="py-3 font-semibold text-slate-400 text-sm text-right">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
+            <tbody className="divide-y divide-slate-800">
               <ReportRow category="Security Services" budgeted={45000} actual={45000} />
               <ReportRow category="Electrical Maintenance" budgeted={15000} actual={18500} />
               <ReportRow category="Water Supply" budgeted={20000} actual={19200} />
@@ -1192,10 +1216,10 @@ function ReportRow({ category, budgeted, actual }: { category: string, budgeted:
 
   return (
     <tr>
-      <td className="py-4 font-medium text-slate-900 dark:text-white">{category}</td>
-      <td className="py-4 text-slate-600 dark:text-slate-400">₹{budgeted.toLocaleString()}</td>
-      <td className="py-4 text-slate-600 dark:text-slate-400">₹{actual.toLocaleString()}</td>
-      <td className={cn("py-4", isOver ? "text-rose-600" : "text-emerald-600")}>
+      <td className="py-4 font-medium text-white">{category}</td>
+      <td className="py-4 text-slate-200">₹{budgeted.toLocaleString()}</td>
+      <td className="py-4 text-slate-200">₹{actual.toLocaleString()}</td>
+      <td className={cn("py-4 font-bold", isOver ? "text-rose-500" : "text-emerald-500")}>
         {isOver ? "+" : ""}₹{variance.toLocaleString()}
       </td>
       <td className="py-4 text-right">
@@ -1214,38 +1238,38 @@ function ResidentBillsView({ user, apiFetch }: { user: User, apiFetch: any }) {
     apiFetch('/api/resident/dashboard').then((res: any) => res.json()).then(setData);
   }, [user]);
 
-  if (!data) return <p className="dark:text-white">Loading...</p>;
+  if (!data) return <p className="text-white">Loading...</p>;
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6 md:col-span-1 bg-red-600 text-white border-none">
+        <Card className="p-6 md:col-span-1 bg-red-600 text-white border-none shadow-lg shadow-red-900/20">
           <p className="text-xs opacity-70 uppercase font-bold">Current Outstanding</p>
           <h3 className="text-4xl font-black mt-2">₹{data.flat.maintenance_status === 'Unpaid' ? '1,500' : '0'}</h3>
           <p className="text-sm opacity-80 mt-4">Flat {user.flat_id}</p>
           <p className="text-sm opacity-80">{user.name}</p>
           {data.flat.maintenance_status === 'Unpaid' && (
-            <Button variant="secondary" className="w-full mt-6 text-red-600 font-bold">Pay Now</Button>
+            <Button variant="secondary" className="w-full mt-6 bg-white text-red-600 font-bold hover:bg-slate-100">Pay Now</Button>
           )}
         </Card>
 
         <div className="md:col-span-2 space-y-4">
-          <h3 className="text-lg font-bold dark:text-white">Billing History</h3>
+          <h3 className="text-lg font-bold text-white">Billing History</h3>
           {data.bills.map((bill: Bill) => (
-            <Card key={bill.id} className="p-4 flex items-center justify-between dark:bg-slate-800 dark:border-slate-700">
+            <Card key={bill.id} className="p-4 flex items-center justify-between bg-slate-800 border-slate-700">
               <div>
-                <p className="font-bold text-slate-900 dark:text-white">{bill.month}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Due: {bill.due_date}</p>
+                <p className="font-bold text-white">{bill.month}</p>
+                <p className="text-xs text-slate-400">Due: {bill.due_date}</p>
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="font-bold text-slate-900 dark:text-white">₹{bill.amount}</p>
+                  <p className="font-bold text-white">₹{bill.amount}</p>
                   <Badge variant={bill.status === 'Paid' ? 'success' : 'danger'}>{bill.status}</Badge>
                 </div>
                 {bill.status === 'Paid' && (
                   <Button 
                     variant="ghost" 
-                    className="p-2 text-red-600"
+                    className="p-2 text-red-500 hover:bg-red-500/10"
                     onClick={() => window.print()}
                   >
                     <FileText size={18} />
@@ -1296,12 +1320,12 @@ function ResidentComplaintsView({ user, apiFetch }: { user: User, apiFetch: any 
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <Card className="p-6 lg:col-span-1 h-fit dark:bg-slate-800 dark:border-slate-700">
-        <h3 className="text-lg font-bold mb-4 dark:text-white">Raise a Complaint</h3>
+      <Card className="p-6 lg:col-span-1 h-fit bg-slate-800 border-slate-700">
+        <h3 className="text-lg font-bold mb-4 text-white">Raise a Complaint</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Category</label>
-            <select name="category" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white">
+            <label className="block text-sm font-medium text-slate-300 mb-1">Category</label>
+            <select name="category" className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-900 text-white">
               <option value="Water">Water</option>
               <option value="Electricity">Electricity</option>
               <option value="Lift">Lift</option>
@@ -1310,12 +1334,12 @@ function ResidentComplaintsView({ user, apiFetch }: { user: User, apiFetch: any 
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Issue Title</label>
-            <input name="title" required type="text" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white" placeholder="e.g., Leakage in Bathroom" />
+            <label className="block text-sm font-medium text-slate-300 mb-1">Issue Title</label>
+            <input name="title" required type="text" className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-900 text-white" placeholder="e.g., Leakage in Bathroom" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
-            <textarea name="description" required rows={4} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white" placeholder="Describe the issue in detail..." />
+            <label className="block text-sm font-medium text-slate-300 mb-1">Description</label>
+            <textarea name="description" required rows={4} className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-900 text-white" placeholder="Describe the issue in detail..." />
           </div>
           <Button disabled={loading} className="w-full">
             {loading ? "Submitting..." : "Submit Complaint"}
@@ -1324,24 +1348,24 @@ function ResidentComplaintsView({ user, apiFetch }: { user: User, apiFetch: any 
       </Card>
 
       <div className="lg:col-span-2 space-y-4">
-        <h3 className="text-lg font-bold dark:text-white">Your Complaints</h3>
+        <h3 className="text-lg font-bold text-white">Your Complaints</h3>
         {complaints.map(c => (
-          <Card key={c.id} className="p-4 dark:bg-slate-800 dark:border-slate-700">
+          <Card key={c.id} className="p-4 bg-slate-800 border-slate-700">
             <div className="flex justify-between items-start mb-2">
               <div>
-                <h4 className="font-bold text-slate-900 dark:text-white">{c.title}</h4>
+                <h4 className="font-bold text-white">{c.title}</h4>
                 <Badge variant="neutral">{c.category}</Badge>
               </div>
               <Badge variant={c.status === 'Resolved' ? 'success' : 'warning'}>{c.status}</Badge>
             </div>
-            <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">{c.description}</p>
+            <p className="text-sm text-slate-300 mb-3">{c.description}</p>
             <div className="flex items-center gap-2 text-[10px] text-slate-400">
               <Clock size={12} />
               <span>{format(new Date(c.created_at), 'PPP p')}</span>
             </div>
           </Card>
         ))}
-        {complaints.length === 0 && <p className="text-center py-12 text-slate-400">No complaints raised yet.</p>}
+        {complaints.length === 0 && <p className="text-center py-12 text-slate-300">No complaints raised yet.</p>}
       </div>
     </div>
   );
@@ -1387,24 +1411,24 @@ function ResidentBookingsView({ user, apiFetch }: { user: User, apiFetch: any })
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <Card className="p-6 lg:col-span-1 h-fit dark:bg-slate-800 dark:border-slate-700">
-        <h3 className="text-lg font-bold mb-4 dark:text-white">Book Amenity</h3>
+      <Card className="p-6 lg:col-span-1 h-fit bg-slate-800 border-slate-700">
+        <h3 className="text-lg font-bold mb-4 text-white">Book Amenity</h3>
         <form onSubmit={handleBook} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Select Amenity</label>
-            <select name="amenity" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white">
+            <label className="block text-sm font-medium text-slate-300 mb-1">Select Amenity</label>
+            <select name="amenity" className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-900 text-white">
               <option value="Clubhouse">Clubhouse</option>
               <option value="Gym">Gym</option>
               <option value="Swimming Pool">Swimming Pool</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Date</label>
-            <input name="date" required type="date" min={format(new Date(), 'yyyy-MM-dd')} className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white" />
+            <label className="block text-sm font-medium text-slate-300 mb-1">Date</label>
+            <input name="date" required type="date" min={format(new Date(), 'yyyy-MM-dd')} className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-900 text-white" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Time Slot</label>
-            <select name="timeSlot" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white">
+            <label className="block text-sm font-medium text-slate-300 mb-1">Time Slot</label>
+            <select name="timeSlot" className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-900 text-white">
               <option value="06:00 AM - 08:00 AM">06:00 AM - 08:00 AM</option>
               <option value="08:00 AM - 10:00 AM">08:00 AM - 10:00 AM</option>
               <option value="04:00 PM - 06:00 PM">04:00 PM - 06:00 PM</option>
@@ -1418,16 +1442,16 @@ function ResidentBookingsView({ user, apiFetch }: { user: User, apiFetch: any })
       </Card>
 
       <div className="lg:col-span-2 space-y-4">
-        <h3 className="text-lg font-bold dark:text-white">Society Bookings</h3>
+        <h3 className="text-lg font-bold text-white">Society Bookings</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {bookings.map(b => (
-            <Card key={b.id} className={cn("p-4 border-l-4 dark:bg-slate-800 dark:border-slate-700", b.flat_id === user.flat_id ? "border-l-red-600" : "border-l-slate-200 dark:border-l-slate-600")}>
+            <Card key={b.id} className={cn("p-4 border-l-4 bg-slate-800 border-slate-700", b.flat_id === user.flat_id ? "border-l-red-600" : "border-l-slate-700")}>
               <div className="flex justify-between items-start">
-                <h4 className="font-bold text-slate-900 dark:text-white">{b.amenity}</h4>
+                <h4 className="font-bold text-white">{b.amenity}</h4>
                 {b.flat_id === user.flat_id && <Badge variant="info">Your Booking</Badge>}
               </div>
-              <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">{format(new Date(b.date), 'PPP')}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{b.time_slot}</p>
+              <p className="text-sm text-slate-300 mt-1">{format(new Date(b.date), 'PPP')}</p>
+              <p className="text-xs text-slate-400">{b.time_slot}</p>
               <p className="text-[10px] text-slate-400 mt-2">Booked by Flat {b.flat_id}</p>
             </Card>
           ))}
@@ -1446,23 +1470,23 @@ function ResidentVisitorsView({ user, apiFetch }: { user: User, apiFetch: any })
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-bold dark:text-white">Visitor History</h3>
+      <h3 className="text-lg font-bold text-white">Visitor History</h3>
       <div className="overflow-x-auto">
         <table className="w-full text-left">
           <thead>
-            <tr className="border-b border-slate-100 dark:border-slate-700">
-              <th className="py-3 font-semibold text-slate-500 dark:text-slate-400 text-sm">Visitor Name</th>
-              <th className="py-3 font-semibold text-slate-500 dark:text-slate-400 text-sm">Entry Time</th>
-              <th className="py-3 font-semibold text-slate-500 dark:text-slate-400 text-sm">Exit Time</th>
-              <th className="py-3 font-semibold text-slate-500 dark:text-slate-400 text-sm text-right">Status</th>
+            <tr className="border-b border-slate-800">
+              <th className="py-3 font-semibold text-slate-400 text-sm">Visitor Name</th>
+              <th className="py-3 font-semibold text-slate-400 text-sm">Entry Time</th>
+              <th className="py-3 font-semibold text-slate-400 text-sm">Exit Time</th>
+              <th className="py-3 font-semibold text-slate-400 text-sm text-right">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50 dark:divide-slate-700">
+          <tbody className="divide-y divide-slate-800">
             {visitors.map(v => (
               <tr key={v.id}>
-                <td className="py-4 font-medium text-slate-900 dark:text-white">{v.name}</td>
-                <td className="py-4 text-slate-600 dark:text-slate-300 text-sm">{format(new Date(v.entry_time), 'PPP p')}</td>
-                <td className="py-4 text-slate-600 dark:text-slate-300 text-sm">{v.exit_time ? format(new Date(v.exit_time), 'PPP p') : '-'}</td>
+                <td className="py-4 font-medium text-white">{v.name}</td>
+                <td className="py-4 text-slate-300 text-sm">{format(new Date(v.entry_time), 'PPP p')}</td>
+                <td className="py-4 text-slate-300 text-sm">{v.exit_time ? format(new Date(v.exit_time), 'PPP p') : '-'}</td>
                 <td className="py-4 text-right">
                   <Badge variant={v.status === 'In' ? 'warning' : 'neutral'}>{v.status}</Badge>
                 </td>
@@ -1471,7 +1495,7 @@ function ResidentVisitorsView({ user, apiFetch }: { user: User, apiFetch: any })
           </tbody>
         </table>
       </div>
-      {visitors.length === 0 && <p className="text-center py-12 text-slate-400">No visitor records found.</p>}
+      {visitors.length === 0 && <p className="text-center py-12 text-slate-300">No visitor records found.</p>}
     </div>
   );
 }
@@ -1497,16 +1521,16 @@ function SecurityVisitorsView({ apiFetch }: { apiFetch: any }) {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-bold dark:text-white">Daily Visitor Log</h3>
+        <h3 className="text-lg font-bold text-white">Daily Visitor Log</h3>
         <Badge variant="info">{visitors.filter(v => v.status === 'In').length} Currently Inside</Badge>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {visitors.map(v => (
-          <Card key={v.id} className="p-4 dark:bg-slate-800 dark:border-slate-700">
+          <Card key={v.id} className="p-4 bg-slate-800 border-slate-700">
             <div className="flex justify-between items-start mb-3">
               <div>
-                <h4 className="font-bold text-slate-900 dark:text-white">{v.name}</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Flat {v.flat_id} (Tower {v.tower})</p>
+                <h4 className="font-bold text-white">{v.name}</h4>
+                <p className="text-xs text-slate-400">Flat {v.flat_id} (Tower {v.tower})</p>
               </div>
               <Badge variant={v.status === 'In' ? 'warning' : 'neutral'}>{v.status}</Badge>
             </div>
@@ -1561,17 +1585,17 @@ function SecurityNewEntryView({ apiFetch }: { apiFetch: any }) {
 
   return (
     <div className="max-w-md mx-auto">
-      <Card className="p-8 dark:bg-slate-800 dark:border-slate-700">
-        <h3 className="text-xl font-bold mb-6 dark:text-white">Record New Visitor</h3>
+      <Card className="p-8 bg-slate-800 border-slate-700">
+        <h3 className="text-xl font-bold mb-6 text-white">Record New Visitor</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Visitor Name</label>
-            <input name="name" required type="text" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white" placeholder="Full Name" />
+            <label className="block text-sm font-medium text-slate-300 mb-1">Visitor Name</label>
+            <input name="name" required type="text" className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-900 text-white" placeholder="Full Name" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tower</label>
-              <select name="tower" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white">
+              <label className="block text-sm font-medium text-slate-300 mb-1">Tower</label>
+              <select name="tower" className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-900 text-white">
                 <option value="A">Tower A</option>
                 <option value="B">Tower B</option>
                 <option value="C">Tower C</option>
@@ -1579,13 +1603,13 @@ function SecurityNewEntryView({ apiFetch }: { apiFetch: any }) {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Flat Number</label>
-              <input name="flatId" required type="text" className="w-full px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg outline-none bg-white dark:bg-slate-900 dark:text-white" placeholder="e.g., A-101" />
+              <label className="block text-sm font-medium text-slate-300 mb-1">Flat Number</label>
+              <input name="flatId" required type="text" className="w-full px-4 py-2 border border-slate-700 rounded-lg outline-none bg-slate-900 text-white" placeholder="e.g., A-101" />
             </div>
           </div>
-          <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-700 flex gap-3">
+          <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-700 flex gap-3">
             <MapPin className="text-slate-400 shrink-0" size={20} />
-            <p className="text-xs text-slate-500 dark:text-slate-400">Entry time will be automatically recorded as {format(new Date(), 'p')}.</p>
+            <p className="text-xs text-slate-400">Entry time will be automatically recorded as {format(new Date(), 'p')}.</p>
           </div>
           <Button disabled={loading} className="w-full py-3">
             {loading ? "Recording..." : "Check In Visitor"}

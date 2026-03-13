@@ -1,0 +1,142 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: users
+    // Fields: uid, name, email, role, tower, flatNumber, societyId, phone, status
+    //
+    // Collection: flats
+    // Fields: id, tower, floor, number, residentId, residentName, paymentStatus
+    //
+    // Collection: bills
+    // Fields: flatId, amount, month, dueDate, status, paidAt
+    //
+    // Collection: complaints
+    // Fields: residentId, residentName, tower, flatNumber, title, description, mediaUrl, status, createdAt
+    //
+    // Collection: bookings
+    // Fields: residentId, residentName, amenity, date, timeSlot, status, createdAt
+    //
+    // Collection: notices
+    // Fields: title, content, date, priority
+    //
+    // Collection: events
+    // Fields: title, description, date, location
+    //
+    // Collection: alerts
+    // Fields: residentId, residentName, tower, flatNumber, type, timestamp, status
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        ((request.auth.token.keys().contains('email') && 
+          (request.auth.token.email == "balajiravindrasurvase@gmail.com" || 
+           request.auth.token.email == "admin@towertech.com")) ||
+         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN'));
+    }
+
+    // Connection Test
+    match /_connection_test_/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.residentId;
+    }
+
+    function isValidString(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    // Users
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['uid', 'name', 'email', 'role']) &&
+               data.uid == userId &&
+               isValidString(data.name, 100) &&
+               isValidString(data.email, 100) &&
+               (data.role == 'RESIDENT' || (data.role == 'ADMIN' && isAdmin()));
+      }
+
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      // Allow unauthenticated query for resident login by flat number
+      allow list: if !isAuthenticated() && 
+                    request.query.limit <= 1 && 
+                    request.query.filters.size() == 2 &&
+                    request.query.filters[0].op == '==' && 
+                    request.query.filters[0].field == 'flatNumber' &&
+                    request.query.filters[1].op == '==' && 
+                    request.query.filters[1].field == 'role' &&
+                    request.query.filters[1].value == 'RESIDENT';
+      
+      allow create: if isAuthenticated() && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role));
+    }
+
+    // Flats
+    match /flats/{flatId} {
+      allow read: if true; // Allow public read for flat availability
+      allow write: if isAdmin();
+    }
+
+    // Bills
+    match /bills/{billId} {
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.residentId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // Complaints
+    match /complaints/{complaintId} {
+      function isValidComplaint(data) {
+        return isValidString(data.title, 200) && 
+               isValidString(data.description, 2000) &&
+               data.residentId == request.auth.uid;
+      }
+      allow read: if isAuthenticated() && (isAdmin() || resource.data.residentId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidComplaint(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || (resource.data.residentId == request.auth.uid && isValidComplaint(request.resource.data)));
+      allow delete: if isAdmin();
+    }
+
+    // Bookings
+    match /bookings/{bookingId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (isAuthenticated() && resource.data.residentId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // Notices
+    match /notices/{noticeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Events
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Alerts
+    match /alerts/{alertId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

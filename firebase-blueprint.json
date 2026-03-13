@@ -1,0 +1,155 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile for residents and admins",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["ADMIN", "RESIDENT"] },
+        "tower": { "type": "string", "enum": ["A", "B", "C", "D"] },
+        "flatNumber": { "type": "string" },
+        "societyId": { "type": "string" },
+        "phone": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] }
+      },
+      "required": ["uid", "name", "email", "role"]
+    },
+    "Flat": {
+      "title": "Flat",
+      "description": "Information about a specific flat",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tower": { "type": "string", "enum": ["A", "B", "C", "D"] },
+        "floor": { "type": "integer" },
+        "number": { "type": "string" },
+        "residentId": { "type": "string" },
+        "residentName": { "type": "string" },
+        "paymentStatus": { "type": "string", "enum": ["PAID", "UNPAID"] }
+      },
+      "required": ["tower", "floor", "number"]
+    },
+    "MaintenanceBill": {
+      "title": "Maintenance Bill",
+      "description": "Monthly maintenance bill for a flat",
+      "type": "object",
+      "properties": {
+        "flatId": { "type": "string" },
+        "amount": { "type": "number" },
+        "month": { "type": "string" },
+        "dueDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["PAID", "UNPAID"] },
+        "paidAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["flatId", "amount", "month", "status"]
+    },
+    "Complaint": {
+      "title": "Complaint",
+      "description": "Resident complaint",
+      "type": "object",
+      "properties": {
+        "residentId": { "type": "string" },
+        "residentName": { "type": "string" },
+        "tower": { "type": "string" },
+        "flatNumber": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "mediaUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "IN_PROGRESS", "RESOLVED"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["residentId", "title", "description", "status"]
+    },
+    "AmenityBooking": {
+      "title": "Amenity Booking",
+      "description": "Booking for clubhouse, garden, or hall",
+      "type": "object",
+      "properties": {
+        "residentId": { "type": "string" },
+        "residentName": { "type": "string" },
+        "amenity": { "type": "string", "enum": ["Clubhouse", "Garden", "Hall"] },
+        "date": { "type": "string", "format": "date" },
+        "timeSlot": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["residentId", "amenity", "date", "status"]
+    },
+    "Notice": {
+      "title": "Notice",
+      "description": "Society notice or announcement",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "priority": { "type": "string", "enum": ["NORMAL", "HIGH"] }
+      },
+      "required": ["title", "content", "date"]
+    },
+    "Event": {
+      "title": "Event",
+      "description": "Society event",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "location": { "type": "string" }
+      },
+      "required": ["title", "date"]
+    },
+    "EmergencyAlert": {
+      "title": "Emergency Alert",
+      "description": "Resident emergency alert",
+      "type": "object",
+      "properties": {
+        "residentId": { "type": "string" },
+        "residentName": { "type": "string" },
+        "tower": { "type": "string" },
+        "flatNumber": { "type": "string" },
+        "type": { "type": "string", "enum": ["Water Shortage", "Power Outage", "Lift Breakdown", "Medical", "Security"] },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["ACTIVE", "RESOLVED"] }
+      },
+      "required": ["residentId", "type", "timestamp", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/flats/{flatId}": {
+      "schema": "Flat",
+      "description": "Flat details"
+    },
+    "/bills/{billId}": {
+      "schema": "MaintenanceBill",
+      "description": "Maintenance bills"
+    },
+    "/complaints/{complaintId}": {
+      "schema": "Complaint",
+      "description": "Resident complaints"
+    },
+    "/bookings/{bookingId}": {
+      "schema": "AmenityBooking",
+      "description": "Amenity bookings"
+    },
+    "/notices/{noticeId}": {
+      "schema": "Notice",
+      "description": "Society notices"
+    },
+    "/events/{eventId}": {
+      "schema": "Event",
+      "description": "Society events"
+    },
+    "/alerts/{alertId}": {
+      "schema": "EmergencyAlert",
+      "description": "Emergency alerts"
+    }
+  }
+}
